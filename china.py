@@ -1,4 +1,4 @@
-﻿import requests
+import requests
 import lxml.html
 import time
 
@@ -11,33 +11,56 @@ def makelink():
     page_max = int(page_cont[-1].text_content())
 
     #記事読み込み
-    page_url = "https://retrip.jp/locations/Japan/?page="
-    #i = page_max
-    i=1
-    while i>0:
-        #時間制御
-        time.sleep(1)
-        #URL生成
-        target_url = page_url+'{0:d}'.format(i)
-        #ウェブアクセス
-        all_html = requests.get(target_url).text
-        #スクレイピング
-        root = lxml.html.fromstring(all_html)
-        art_title = root.xpath("//section/*//*[contains(@class,'exp')]/a")
-        art_sub = root.xpath("//section/*//*[contains(@class,'sub')]")
-        art_count = root.xpath("//section/*//*[contains(@class,'countView')]")
+    with open("retrip.csv","w") as f:
+        page_url = "https://retrip.jp/locations/Japan/?page="
+        i = page_max
+        while i>0:
+            #page表示
+            print(i)
+            #時間制御
+            time.sleep(1)
+            #URL生成
+            target_url = page_url+'{0:d}'.format(i)
 
-        #記事タイトルと記事先URLの出力
-        t=0
-        while t < len(art_title):
-            print(art_title[t].get("title"))
-            art_url = "https://retrip.jp" + art_title[t].get("href")
-            print(art_url)
-            print(art_sub[t].text_content())
-            print(art_count[t].text_content())
-            print("\n")
-            t=t+1
-        i=i-1
-        
+            #ウェブアクセス
+            net_check=0
+            while net_check==0:
+                try:
+                    all_html = requests.get(target_url).text
+                    net_check=1
+                except:
+                    print("ネットワークエラー再接続します")
+                    time.sleep(5)
+
+            #スクレイピング
+            root = lxml.html.fromstring(all_html)
+            art_title = root.xpath("//section/*//*[contains(@class,'exp')]/a")
+            art_sub = root.xpath("//section/*//*[contains(@class,'sub')]")
+            art_count = root.xpath("//section/*//*[contains(@class,'countView')]")
+
+            #記事タイトルと記事先URLの出力
+            t=0
+            while t < len(art_title):
+                TITLE = art_title[t].get("title")
+                URL = "https://retrip.jp" + art_title[t].get("href")
+                SUB = art_sub[t].text_content()
+                CONTENT = art_count[t].text_content()
+                obj = '"{}",{},{},{}\n'.format(TITLE,URL,SUB,CONTENT)
+                obj_len = len(obj)
+                #ファイル出力
+                try:
+                    f.write(obj)
+                #UnicodeEncodeError時の対処
+                except UnicodeEncodeError:
+                    for j in range(0,obj_len):
+                        try:
+                            f.write(obj[j])
+                            print(obj[j],end="")
+                        except UnicodeEncodeError:
+                            f.write("??")
+                            print("encode error",end="")
+                    print()
+                t=t+1
+            i=i-1
+
 makelink()
-
